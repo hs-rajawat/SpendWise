@@ -1,0 +1,139 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ 'Edit expense' if mode == 'edit' else 'Add expense' }}{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{{ 'Editing transaction #' ~ '%04d'|format(expense.id) if mode == 'edit' else 'New transaction' }}</p>
+    <h1>{{ 'Edit expense' if mode == 'edit' else 'Add expense' }}</h1>
+    <p class="page-sub">{{ 'Update the details below and save your changes.' if mode == 'edit' else 'Record a purchase and keep your spending picture accurate.' }}</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{{ url_for('main.expense_detail', expense_id=expense.id) if mode == 'edit' else url_for('main.transactions') }}">
+      {{ m.icon('arrow-left', 16) }} {{ 'Back to details' if mode == 'edit' else 'Back to transactions' }}
+    </a>
+  </div>
+</div>
+
+{% if errors %}
+<div class="form-alert" role="alert">
+  <span class="form-alert__icon">{{ m.icon('alert', 18) }}</span>
+  <div>
+    <strong>We couldn't save this expense</strong>
+    <p>Please correct the highlighted fields and try again.</p>
+  </div>
+</div>
+{% endif %}
+
+<form class="form-layout" method="post" action="{{ url_for('main.edit_expense', expense_id=expense.id) if mode == 'edit' else url_for('main.add_expense') }}" novalidate>
+  <div class="card form-card">
+    <div class="form-section">
+      <div class="form-section__head">
+        <h2>Expense details</h2>
+        <p>Amount, category and date are required. Description is optional.</p>
+      </div>
+
+      <div class="field {{ 'has-error' if errors.amount }}">
+        <label for="amount">Amount</label>
+        <div class="amount-input">
+          <span class="amount-prefix" aria-hidden="true">₹</span>
+          <input id="amount" name="amount" type="number" inputmode="decimal" step="0.01" min="0.01" max="10000000"
+                 value="{{ values.amount }}" placeholder="0.00" required autofocus
+                 aria-describedby="amount-hint{{ ' amount-error' if errors.amount }}"
+                 {% if errors.amount %}aria-invalid="true"{% endif %}>
+          <span class="amount-suffix">INR</span>
+        </div>
+        <p class="field-hint" id="amount-hint">Enter the amount in Indian rupees, up to two decimal places.</p>
+        {% if errors.amount %}<p class="field-error" id="amount-error">{{ errors.amount }}</p>{% endif %}
+      </div>
+
+      <fieldset class="field {{ 'has-error' if errors.category }}">
+        <legend>Category</legend>
+        <div class="cat-grid">
+          {% for name, meta in CATEGORIES.items() %}
+          <label class="cat-tile" style="--cat-color: {{ meta.color }}">
+            <input type="radio" name="category" value="{{ name }}" {% if values.category == name %}checked{% endif %} required>
+            <span class="cat-tile__body">
+              <span class="cat-icon" style="--cat-color: {{ meta.color }}">{{ m.icon(meta.icon, 17) }}</span>
+              <span>{{ name }}</span>
+            </span>
+          </label>
+          {% endfor %}
+        </div>
+        {% if errors.category %}<p class="field-error">{{ errors.category }}</p>{% endif %}
+      </fieldset>
+
+      <div class="form-row">
+        <div class="field {{ 'has-error' if errors.transaction_date }}">
+          <label for="transaction_date">Transaction date</label>
+          <input id="transaction_date" name="transaction_date" type="date" value="{{ values.transaction_date }}"
+                 max="{{ today_iso }}" required
+                 aria-describedby="date-hint{{ ' date-error' if errors.transaction_date }}"
+                 {% if errors.transaction_date %}aria-invalid="true"{% endif %}>
+          <p class="field-hint" id="date-hint">Future dates are not allowed.</p>
+          {% if errors.transaction_date %}<p class="field-error" id="date-error">{{ errors.transaction_date }}</p>{% endif %}
+        </div>
+
+        <div class="field">
+          <label for="description">Description (optional)</label>
+          <div class="description-wrap">
+            <input id="description" name="description" type="text" value="{{ values.description }}"
+                   placeholder="e.g. Lunch with the team" maxlength="160"
+                   aria-describedby="description-hint{{ ' description-error' if errors.description }}"
+                   {% if errors.description %}aria-invalid="true"{% endif %}>
+            <span class="char-count" data-char-count>{{ values.description|length }}/160</span>
+          </div>
+          <p class="field-hint" id="description-hint">Add a short note to recognise this expense later, or leave it empty.</p>
+          {% if errors.description %}<p class="field-error" id="description-error">{{ errors.description }}</p>{% endif %}
+        </div>
+      </div>
+    </div>
+
+    <div class="form-actions">
+      <a class="btn btn-ghost" href="{{ url_for('main.expense_detail', expense_id=expense.id) if mode == 'edit' else url_for('main.transactions') }}">Cancel</a>
+      <button class="btn btn-primary" type="submit">
+        {{ m.icon('check', 17) }} {{ 'Save changes' if mode == 'edit' else 'Add expense' }}
+      </button>
+    </div>
+  </div>
+
+  <aside class="form-side">
+    {% if mode == 'edit' and expense %}
+    <div class="card side-card">
+      <header class="card-head">
+        <div>
+          <h2>Record details</h2>
+          <p>Transaction #{{ '%04d'|format(expense.id) }}</p>
+        </div>
+      </header>
+      <dl class="meta-list">
+        <div><dt>Created</dt><dd>{{ expense.created_at|datetime_display }}</dd></div>
+        <div><dt>Last updated</dt><dd>{{ expense.updated_at|datetime_display }}</dd></div>
+        <div><dt>Current category</dt><dd>{{ m.category_chip(expense.category, show_icon=true) }}</dd></div>
+      </dl>
+    </div>
+    {% endif %}
+
+    <div class="card side-card">
+      <header class="card-head">
+        <div>
+          <h2>Keep it accurate</h2>
+          <p>Small habits, better records</p>
+        </div>
+      </header>
+      <ul class="tip-list">
+        <li>{{ m.icon('check', 15) }}<span>Log expenses the same day so amounts and dates stay fresh.</span></li>
+        <li>{{ m.icon('check', 15) }}<span>Add a description when it helps you recognise the expense later — it is optional.</span></li>
+        <li>{{ m.icon('check', 15) }}<span>Pick the category that best matches the purchase, not the store.</span></li>
+      </ul>
+    </div>
+
+    <div class="side-note">
+      {{ m.icon('shield', 16) }}
+      <p>This record is stored only in the local SQLite database on your device.</p>
+    </div>
+  </aside>
+</form>
+{% endblock %}

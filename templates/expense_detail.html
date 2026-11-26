@@ -1,0 +1,92 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ expense_title(expense) }}{% endblock %}
+
+{% block content %}
+{% set meta = CATEGORIES.get(expense.category, {'color': '#94a3b8', 'icon': 'cat-other'}) %}
+
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Transaction #{{ '%04d'|format(expense.id) }}</p>
+    <h1>Expense details</h1>
+    <p class="page-sub">A complete view of this recorded transaction.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-ghost" href="{{ url_for('main.transactions') }}">{{ m.icon('arrow-left', 16) }} Back to transactions</a>
+    <a class="btn btn-primary" href="{{ url_for('main.edit_expense', expense_id=expense.id) }}">{{ m.icon('edit', 16) }} Edit expense</a>
+  </div>
+</div>
+
+<div class="detail-layout">
+  <article class="card detail-card">
+    <div class="detail-hero">
+      <span class="cat-icon cat-icon--lg" style="--cat-color: {{ meta.color }}">{{ m.icon(meta.icon, 26) }}</span>
+      <div class="detail-hero__copy">
+        <span class="detail-hero__ref">Expense #{{ '%04d'|format(expense.id) }}</span>
+        <h2>{{ expense_title(expense) }}</h2>
+        <div class="detail-hero__meta">
+          {{ m.category_chip(expense.category, show_icon=true) }}
+          <span class="meta-dot" aria-hidden="true"></span>
+          <span>{{ expense.transaction_date|full_date }}</span>
+        </div>
+      </div>
+      <p class="detail-amount">{{ expense.amount|inr }}</p>
+    </div>
+
+    <div class="detail-divider"></div>
+
+    <dl class="detail-grid">
+      <div>
+        <dt>Transaction date</dt>
+        <dd>{{ expense.transaction_date|full_date }}</dd>
+      </div>
+      <div>
+        <dt>Category</dt>
+        <dd>{{ m.category_chip(expense.category) }}</dd>
+      </div>
+      <div>
+        <dt>Amount</dt>
+        <dd class="mono">{{ expense.amount|inr }}</dd>
+      </div>
+      <div>
+        <dt>Reference</dt>
+        <dd class="mono">#{{ '%04d'|format(expense.id) }}</dd>
+      </div>
+      <div>
+        <dt>Recorded on</dt>
+        <dd>{{ expense.created_at|datetime_display }}</dd>
+      </div>
+      <div>
+        <dt>Last updated</dt>
+        <dd>{{ expense.updated_at|datetime_display }}</dd>
+      </div>
+    </dl>
+  </article>
+
+  <aside class="detail-side">
+    <div class="card side-card">
+      <header class="card-head">
+        <div>
+          <h2>Manage expense</h2>
+          <p>Changes apply instantly</p>
+        </div>
+      </header>
+      <div class="side-actions">
+        <a class="btn btn-secondary btn-block" href="{{ url_for('main.edit_expense', expense_id=expense.id) }}">{{ m.icon('edit', 16) }} Edit details</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('main.add_expense') }}">{{ m.icon('plus', 16) }} Add another expense</a>
+        <a class="btn btn-ghost btn-block" href="{{ url_for('main.transactions') }}">{{ m.icon('receipt', 16) }} All transactions</a>
+      </div>
+      <div class="side-divider"></div>
+      <form method="post" action="{{ url_for('main.delete_expense', expense_id=expense.id) }}" data-confirm="Delete “{{ expense_title(expense) }}” ({{ expense.amount|inr }})? This cannot be undone.">
+        <button class="btn btn-danger-ghost btn-block" type="submit">{{ m.icon('trash', 16) }} Delete expense</button>
+      </form>
+    </div>
+
+    <div class="side-note">
+      {{ m.icon('shield', 16) }}
+      <p>This expense is stored locally in your SQLite database and persists between restarts.</p>
+    </div>
+  </aside>
+</div>
+{% endblock %}

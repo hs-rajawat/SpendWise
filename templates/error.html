@@ -1,0 +1,19 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}{{ title }}{% endblock %}
+
+{% block content %}
+<div class="error-page">
+  <div class="error-card">
+    <span class="error-card__icon">{{ m.icon('alert' if code == 500 else 'search', 26) }}</span>
+    <p class="error-code">{{ code }}</p>
+    <h1>{{ title }}</h1>
+    <p>{{ message }}</p>
+    <div class="error-actions">
+      <a class="btn btn-primary" href="{{ url_for('main.dashboard') }}">{{ m.icon('dashboard', 16) }} Back to dashboard</a>
+      <a class="btn btn-ghost" href="{{ url_for('main.transactions') }}">View transactions</a>
+    </div>
+  </div>
+</div>
+{% endblock %}

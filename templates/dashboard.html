@@ -1,0 +1,215 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}Dashboard{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">{{ today|full_date }}</p>
+    <h1>Dashboard</h1>
+    <p class="page-sub">Here is how your money is moving this month.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('main.add_expense') }}">{{ m.icon('plus', 17) }} Add expense</a>
+  </div>
+</div>
+
+<section class="stats-grid" aria-label="Monthly summary">
+  <article class="stat-card stat-card--mint">
+    <div class="stat-card__top">
+      <span class="stat-card__label">This month</span>
+      <span class="stat-card__icon">{{ m.icon('wallet', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.month_total|inr }}</p>
+    <p class="stat-card__meta">
+      {% if data.month_change is not none %}
+        <span class="delta {{ 'delta--up' if data.month_change > 0 else ('delta--down' if data.month_change < 0 else 'delta--flat') }}">
+          {% if data.month_change != 0 %}{{ m.icon('arrow-up-right' if data.month_change > 0 else 'arrow-down-right', 12) }}{% endif %}
+          {{ data.month_change|abs|pct }}
+        </span>
+        <span>vs last month</span>
+      {% else %}
+        <span>No spending last month to compare</span>
+      {% endif %}
+    </p>
+  </article>
+
+  <article class="stat-card stat-card--sky">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Spent today</span>
+      <span class="stat-card__icon">{{ m.icon('calendar', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.today_total|inr }}</p>
+    <p class="stat-card__meta">
+      <span class="meta-strong">{{ data.today_count }}</span>
+      <span>{{ 'transaction' if data.today_count == 1 else 'transactions' }} recorded today</span>
+    </p>
+  </article>
+
+  <article class="stat-card stat-card--violet">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Transactions</span>
+      <span class="stat-card__icon">{{ m.icon('receipt', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.month_count }}</p>
+    <p class="stat-card__meta">
+      <span>Across</span>
+      <span class="meta-strong">{{ data.active_days }}</span>
+      <span>{{ 'active day' if data.active_days == 1 else 'active days' }} this month</span>
+    </p>
+  </article>
+
+  <article class="stat-card stat-card--amber">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Daily average</span>
+      <span class="stat-card__icon">{{ m.icon('trend', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.avg_daily|inr }}</p>
+    <p class="stat-card__meta">
+      <span>Based on the first {{ data.days_elapsed }} {{ 'day' if data.days_elapsed == 1 else 'days' }} of the month</span>
+    </p>
+  </article>
+</section>
+
+<section class="dash-grid">
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Monthly spending</h2>
+        <p>Your last six months at a glance</p>
+      </div>
+      <a class="text-link" href="{{ url_for('main.analytics') }}">Analytics {{ m.icon('chevron-right', 13) }}</a>
+    </header>
+
+    {% if data.trend_total > 0 %}
+      {% set max_trend = data.trend|map(attribute='total')|max %}
+      <div class="bar-chart" role="img" aria-label="Monthly spending for the last six months">
+        {% for point in data.trend %}
+        <div class="bar-col {{ 'is-active' if point.highlight }}" title="{{ point.full_label }}: {{ point.total|inr }} across {{ point.count }} transactions">
+          <span class="bar-value">{{ point.total|inr_compact }}</span>
+          <div class="bar-slot">
+            <div class="bar-fill" style="height: {{ ((point.total / max_trend * 100) if max_trend else 0)|round(1) }}%"></div>
+          </div>
+          <span class="bar-label">{{ point.label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ m.empty_state('Nothing to chart yet', 'Add your first expense to start building a monthly overview.', 'chart', url_for('main.add_expense'), 'Add an expense') }}
+    {% endif %}
+  </article>
+
+  <article class="card category-card">
+    <header class="card-head">
+      <div>
+        <h2>Category breakdown</h2>
+        <p>{{ current_month_label }}</p>
+      </div>
+      <span class="card-pill">{{ data.categories|length }} {{ 'category' if data.categories|length == 1 else 'categories' }}</span>
+    </header>
+
+    {% if data.categories %}
+      <div class="category-panel">
+        <div class="donut-wrap">
+          <div class="donut" style="background: {{ donut_gradient(data.categories) }}">
+            <div class="donut__center">
+              <span>Total spent</span>
+              <strong>{{ data.month_total|inr_compact }}</strong>
+            </div>
+          </div>
+        </div>
+        <div class="legend">
+          {% for category in data.categories %}
+          <div class="legend-row">
+            <span class="legend-dot" style="--cat-color: {{ CATEGORIES[category.category].color }}"></span>
+            <span class="legend-name" title="{{ category.category }}">{{ category.category }}</span>
+            <span class="legend-amount">{{ category.total|inr_compact }}</span>
+            <span class="legend-pct">{{ category.percent|pct }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      {{ m.empty_state('No spending yet', 'This month is a clean slate. Add an expense to see the category mix.', 'cat-other', url_for('main.add_expense'), 'Add an expense') }}
+    {% endif %}
+  </article>
+</section>
+
+<section class="dash-grid">
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Recent transactions</h2>
+        <p>Your latest recorded expenses</p>
+      </div>
+      <a class="text-link" href="{{ url_for('main.transactions') }}">View all {{ m.icon('chevron-right', 13) }}</a>
+    </header>
+
+    {% if data.recent %}
+      <div class="txn-table">
+        <div class="txn-head">
+          <span>Transaction</span><span>Category</span><span>Date</span><span class="align-right">Amount</span>
+        </div>
+        {% for expense in data.recent %}
+          {{ m.expense_row(expense) }}
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ m.empty_state('No transactions yet', 'Once you add an expense, it will appear here for quick reference.', 'receipt', url_for('main.add_expense'), 'Add your first expense') }}
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Month at a glance</h2>
+        <p>{{ current_month_label }}</p>
+      </div>
+      <span class="card-pill card-pill--quiet">{{ data.days_elapsed }} days in</span>
+    </header>
+
+    {% if data.month_count %}
+      <div class="insight-list">
+        {% if data.largest %}
+        <a class="insight-row" href="{{ url_for('main.expense_detail', expense_id=data.largest.id) }}">
+          <span class="insight-icon insight-icon--mint">{{ m.icon('wallet', 17) }}</span>
+          <span class="insight-copy">
+            <span class="insight-label">Largest expense</span>
+            <span class="insight-value">{{ expense_title(data.largest)|truncate(32, true) }}</span>
+          </span>
+          <span class="insight-amount">{{ data.largest.amount|inr }}</span>
+        </a>
+        {% endif %}
+
+        {% if data.busiest %}
+        <div class="insight-row">
+          <span class="insight-icon insight-icon--violet">{{ m.icon('calendar', 17) }}</span>
+          <span class="insight-copy">
+            <span class="insight-label">Busiest day</span>
+            <span class="insight-value">{{ data.busiest.transaction_date|short_date }} · {{ data.busiest.count }} {{ 'expense' if data.busiest.count == 1 else 'expenses' }}</span>
+          </span>
+          <span class="insight-amount">{{ data.busiest.total|inr }}</span>
+        </div>
+        {% endif %}
+
+        <div class="insight-row">
+          <span class="insight-icon insight-icon--amber">{{ m.icon('check', 17) }}</span>
+          <span class="insight-copy">
+            <span class="insight-label">Active days</span>
+            <span class="insight-value">Days with at least one expense</span>
+          </span>
+          <span class="insight-amount">{{ data.active_days }}<span class="insight-of">/{{ data.days_elapsed }}</span></span>
+        </div>
+      </div>
+
+      <div class="mini-tip">
+        {{ m.icon('info', 15) }}
+        <p>Daily average divides this month's spending by {{ data.days_elapsed }} elapsed {{ 'day' if data.days_elapsed == 1 else 'days' }}.</p>
+      </div>
+    {% else %}
+      {{ m.empty_state('A quiet month so far', 'Record an expense and this panel will surface your largest purchase, busiest day and active days.', 'spark', url_for('main.add_expense'), 'Add an expense') }}
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

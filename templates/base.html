@@ -1,0 +1,120 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <meta name="theme-color" content="#0a0e13">
+  <meta name="description" content="SpendWise is a private, local-first personal expense tracker.">
+  <title>{% block title %}Dashboard{% endblock %} · SpendWise</title>
+  <link rel="icon" type="image/svg+xml" href="{{ url_for('static', filename='images/favicon.svg') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  {% include "_sprite.html" %}
+  {% import "_macros.html" as m %}
+
+  <div class="app-shell">
+    <aside class="sidebar" id="sidebar" aria-label="Sidebar">
+      <a class="brand" href="{{ url_for('main.dashboard') }}">
+        <span class="brand-mark" aria-hidden="true">
+          <svg viewBox="0 0 32 32" fill="none">
+            <rect width="32" height="32" rx="9" fill="#6ee7b7"/>
+            <path d="M8.5 11.5h12.8a2.7 2.7 0 0 1 2.7 2.7v6.3a2.7 2.7 0 0 1-2.7 2.7H8.5A2.5 2.5 0 0 1 6 20.7V9.3A1.8 1.8 0 0 1 7.8 7.5h10.7" stroke="#06281d" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+            <circle cx="21.2" cy="17.4" r="1.6" fill="#06281d"/>
+          </svg>
+        </span>
+        <span class="brand-text">
+          <span class="brand-name">SpendWise</span>
+          <span class="brand-tag">Personal expense tracker</span>
+        </span>
+      </a>
+
+      <a class="btn btn-primary btn-block sidebar-add" href="{{ url_for('main.add_expense') }}">
+        {{ m.icon('plus', 17) }} Add expense
+      </a>
+
+      <nav class="nav" aria-label="Primary navigation">
+        <p class="nav-label">Workspace</p>
+        <a class="nav-link {{ 'is-active' if active_page == 'dashboard' }}" href="{{ url_for('main.dashboard') }}" {% if active_page == 'dashboard' %}aria-current="page"{% endif %}>
+          {{ m.icon('dashboard', 18) }}<span>Dashboard</span>
+        </a>
+        <a class="nav-link {{ 'is-active' if active_page == 'transactions' }}" href="{{ url_for('main.transactions') }}" {% if active_page == 'transactions' %}aria-current="page"{% endif %}>
+          {{ m.icon('receipt', 18) }}<span>Transactions</span>
+        </a>
+        <a class="nav-link {{ 'is-active' if active_page == 'analytics' }}" href="{{ url_for('main.analytics') }}" {% if active_page == 'analytics' %}aria-current="page"{% endif %}>
+          {{ m.icon('chart', 18) }}<span>Analytics</span>
+        </a>
+      </nav>
+
+      <div class="sidebar-spacer"></div>
+
+      <div class="local-card">
+        <span class="local-card__icon">{{ m.icon('shield', 17) }}</span>
+        <div>
+          <p>Private by default</p>
+          <span>Your records never leave this device. Stored locally in SQLite.</span>
+        </div>
+      </div>
+
+      <div class="sidebar-foot">
+        <span>SpendWise v1.0</span>
+        <span class="sidebar-foot__dot"></span>
+        <span class="mono">SQLite</span>
+      </div>
+    </aside>
+
+    <button class="sidebar-overlay" id="sidebar-overlay" type="button" aria-label="Close navigation"></button>
+
+    <div class="main">
+      <header class="mobile-bar">
+        <a class="brand brand--mobile" href="{{ url_for('main.dashboard') }}">
+          <span class="brand-mark" aria-hidden="true">
+            <svg viewBox="0 0 32 32" fill="none">
+              <rect width="32" height="32" rx="9" fill="#6ee7b7"/>
+              <path d="M8.5 11.5h12.8a2.7 2.7 0 0 1 2.7 2.7v6.3a2.7 2.7 0 0 1-2.7 2.7H8.5A2.5 2.5 0 0 1 6 20.7V9.3A1.8 1.8 0 0 1 7.8 7.5h10.7" stroke="#06281d" stroke-width="2.1" stroke-linecap="round" stroke-linejoin="round"/>
+              <circle cx="21.2" cy="17.4" r="1.6" fill="#06281d"/>
+            </svg>
+          </span>
+          <span class="brand-name">SpendWise</span>
+        </a>
+        <div class="mobile-bar__actions">
+          <a class="icon-btn icon-btn--accent" href="{{ url_for('main.add_expense') }}" aria-label="Add expense">{{ m.icon('plus', 18) }}</a>
+          <button class="icon-btn" id="nav-toggle" type="button" aria-label="Open navigation" aria-controls="sidebar" aria-expanded="false">{{ m.icon('menu', 20) }}</button>
+        </div>
+      </header>
+
+      <main class="page">
+        {% block content %}{% endblock %}
+      </main>
+    </div>
+  </div>
+
+  {% with messages = get_flashed_messages(with_categories=true) %}
+    {% if messages %}
+    <div class="toast-stack" id="toast-stack" aria-live="polite">
+      {% for category, message in messages %}
+      <div class="toast toast--{{ category }}" role="status">
+        <span class="toast__icon">{{ m.icon('check' if category == 'success' else ('alert' if category == 'error' else 'info'), 17) }}</span>
+        <p>{{ message }}</p>
+        <button class="toast__close" type="button" aria-label="Dismiss notification">{{ m.icon('close', 14) }}</button>
+      </div>
+      {% endfor %}
+    </div>
+    {% endif %}
+  {% endwith %}
+
+  <dialog class="modal" id="confirm-dialog" aria-labelledby="confirm-title">
+    <div class="modal__card">
+      <span class="modal__icon">{{ m.icon('trash', 22) }}</span>
+      <h2 id="confirm-title">Delete this expense?</h2>
+      <p id="confirm-message">This record will be permanently removed.</p>
+      <div class="modal__actions">
+        <button class="btn btn-secondary" type="button" data-modal-cancel>Cancel</button>
+        <button class="btn btn-danger" type="button" data-modal-confirm>Delete expense</button>
+      </div>
+    </div>
+  </dialog>
+
+  <script src="{{ url_for('static', filename='js/app.js') }}" defer></script>
+</body>
+</html>

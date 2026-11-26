@@ -1,0 +1,254 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}Analytics{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Spending analytics</p>
+    <h1>Analytics</h1>
+    <p class="page-sub">Understand where your money goes, month by month.</p>
+  </div>
+  <div class="page-actions">
+    <form class="month-picker" method="get" action="{{ url_for('main.analytics') }}">
+      <label class="visually-hidden" for="month-select">Month</label>
+      <input id="month-select" type="month" name="month" value="{{ data.month_key }}" max="{{ current_month_iso }}" data-auto-submit>
+      <button class="btn btn-secondary" type="submit">{{ m.icon('calendar', 15) }} View</button>
+    </form>
+  </div>
+</div>
+
+<section class="stats-grid" aria-label="Month summary">
+  <article class="stat-card stat-card--mint">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Total spent</span>
+      <span class="stat-card__icon">{{ m.icon('wallet', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.total|inr }}</p>
+    <p class="stat-card__meta">{{ data.month_label }}{% if selected_is_current %} · in progress{% endif %}</p>
+  </article>
+
+  <article class="stat-card stat-card--sky">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Vs last month</span>
+      <span class="stat-card__icon">{{ m.icon('trend', 19) }}</span>
+    </div>
+    <p class="stat-card__value">
+      {% if data.change is not none %}
+        {{ '+' if data.change > 0 }}{{ data.change|pct }}
+      {% else %}
+        —
+      {% endif %}
+    </p>
+    <p class="stat-card__meta">
+      {% if data.change is not none %}
+        <span>{{ data.previous_total|inr }} in {{ data.previous_label }}</span>
+      {% elif data.previous_total == 0 and data.total > 0 %}
+        <span>No baseline from {{ data.previous_label }}</span>
+      {% else %}
+        <span>No comparison data yet</span>
+      {% endif %}
+    </p>
+  </article>
+
+  <article class="stat-card stat-card--violet">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Transactions</span>
+      <span class="stat-card__icon">{{ m.icon('receipt', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.count }}</p>
+    <p class="stat-card__meta">
+      <span>On</span> <span class="meta-strong">{{ data.active_days }}</span>
+      <span>{{ 'active day' if data.active_days == 1 else 'active days' }}</span>
+    </p>
+  </article>
+
+  <article class="stat-card stat-card--amber">
+    <div class="stat-card__top">
+      <span class="stat-card__label">Daily average</span>
+      <span class="stat-card__icon">{{ m.icon('chart', 19) }}</span>
+    </div>
+    <p class="stat-card__value">{{ data.avg_daily|inr }}</p>
+    <p class="stat-card__meta">
+      {% if selected_is_current %}
+        Based on {{ today.day }} elapsed {{ 'day' if today.day == 1 else 'days' }}
+      {% else %}
+        Across {{ data.days_in_month }} days in {{ data.month_label }}
+      {% endif %}
+    </p>
+  </article>
+</section>
+
+<section class="dash-grid">
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Monthly expenditure</h2>
+        <p>Six months ending {{ data.month_label }}</p>
+      </div>
+      {% if selected_is_current %}<span class="card-pill">Current month</span>{% endif %}
+    </header>
+
+    {% set trend_total = data.trend|map(attribute='total')|sum %}
+    {% if trend_total > 0 %}
+      {% set max_trend = data.trend|map(attribute='total')|max %}
+      <div class="bar-chart" role="img" aria-label="Monthly spending trend">
+        {% for point in data.trend %}
+        <div class="bar-col {{ 'is-active' if point.highlight }}" title="{{ point.full_label }}: {{ point.total|inr }} across {{ point.count }} transactions">
+          <span class="bar-value">{{ point.total|inr_compact }}</span>
+          <div class="bar-slot">
+            <div class="bar-fill" style="height: {{ ((point.total / max_trend * 100) if max_trend else 0)|round(1) }}%"></div>
+          </div>
+          <span class="bar-label">{{ point.label }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ m.empty_state('No trend to show', 'There are no expenses in this six-month window yet.', 'chart') }}
+    {% endif %}
+  </article>
+
+  <article class="card category-card">
+    <header class="card-head">
+      <div>
+        <h2>Category split</h2>
+        <p>{{ data.month_label }}</p>
+      </div>
+      <span class="card-pill">{{ data.categories|length }} {{ 'category' if data.categories|length == 1 else 'categories' }}</span>
+    </header>
+
+    {% if data.categories %}
+      <div class="category-panel">
+        <div class="donut-wrap">
+          <div class="donut" style="background: {{ donut_gradient(data.categories) }}">
+            <div class="donut__center">
+              <span>Total</span>
+              <strong>{{ data.total|inr_compact }}</strong>
+            </div>
+          </div>
+        </div>
+        <div class="legend">
+          {% for category in data.categories %}
+          <div class="legend-row">
+            <span class="legend-dot" style="--cat-color: {{ CATEGORIES[category.category].color }}"></span>
+            <span class="legend-name" title="{{ category.category }}">{{ category.category }}</span>
+            <span class="legend-amount">{{ category.total|inr_compact }}</span>
+            <span class="legend-pct">{{ category.percent|pct }}</span>
+          </div>
+          {% endfor %}
+        </div>
+      </div>
+    {% else %}
+      {{ m.empty_state('No category data', 'Add expenses in ' ~ data.month_label ~ ' to see how your spending splits up.', 'cat-other') }}
+    {% endif %}
+  </article>
+</section>
+
+<section class="dash-grid">
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Category contributions</h2>
+        <p>Percentage share of {{ data.month_label }} spending</p>
+      </div>
+      <span class="card-pill card-pill--quiet">{{ data.total|inr }}</span>
+    </header>
+
+    {% if data.categories %}
+      <div class="cat-table">
+        <div class="cat-table__head">
+          <span>Category</span><span class="align-right">Amount</span><span>Share</span><span class="align-right">%</span>
+        </div>
+        {% for category in data.categories %}
+        {% set meta = CATEGORIES[category.category] %}
+        <div class="cat-table__row">
+          <div class="cat-table__name">
+            <span class="cat-icon cat-icon--sm" style="--cat-color: {{ meta.color }}">{{ m.icon(meta.icon, 16) }}</span>
+            <span class="cat-table__label">
+              <strong>{{ category.category }}</strong>
+              <small>{{ category.count }} {{ 'transaction' if category.count == 1 else 'transactions' }}</small>
+            </span>
+          </div>
+          <span class="cat-table__amount">{{ category.total|inr }}</span>
+          <span class="cat-table__share">
+            <span class="share-bar">
+              <span class="share-bar__fill" style="width: {{ category.percent|round(1) }}%; --cat-color: {{ meta.color }}"></span>
+            </span>
+          </span>
+          <span class="cat-table__pct">{{ category.percent|pct }}</span>
+        </div>
+        {% endfor %}
+      </div>
+    {% else %}
+      {{ m.empty_state('Nothing recorded', 'Category contributions will appear here after your first expense this month.', 'receipt') }}
+    {% endif %}
+  </article>
+
+  <article class="card">
+    <header class="card-head">
+      <div>
+        <h2>Monthly comparison</h2>
+        <p>{{ data.previous_label }} vs {{ data.month_label }}</p>
+      </div>
+    </header>
+
+    {% if data.previous_total > 0 or data.total > 0 %}
+      {% set compare_max = [data.total, data.previous_total]|max %}
+      <div class="compare-list">
+        <div class="compare-item">
+          <div class="compare-top">
+            <span>{{ data.previous_label }}</span>
+            <strong>{{ data.previous_total|inr }}</strong>
+          </div>
+          <div class="compare-track">
+            <span class="compare-fill compare-fill--muted" style="width: {{ ((data.previous_total / compare_max * 100) if compare_max else 0)|round(1) }}%"></span>
+          </div>
+        </div>
+        <div class="compare-item">
+          <div class="compare-top">
+            <span>{{ data.month_label }}</span>
+            <strong>{{ data.total|inr }}</strong>
+          </div>
+          <div class="compare-track">
+            <span class="compare-fill" style="width: {{ ((data.total / compare_max * 100) if compare_max else 0)|round(1) }}%"></span>
+          </div>
+        </div>
+      </div>
+
+      {% if data.change is not none %}
+        <div class="verdict {{ 'verdict--up' if data.change > 0 else ('verdict--down' if data.change < 0 else 'verdict--flat') }}">
+          {{ m.icon('arrow-up-right' if data.change > 0 else ('arrow-down-right' if data.change < 0 else 'check'), 15) }}
+          <p>
+            {% if data.change == 0 %}
+              Spending is exactly the same as {{ data.previous_label }}.
+            {% else %}
+              You spent <strong>{{ data.change|abs|pct }}</strong> {{ 'more' if data.change > 0 else 'less' }} than {{ data.previous_label }}.
+            {% endif %}
+          </p>
+        </div>
+      {% elif data.total > 0 %}
+        <div class="compare-note">
+          {{ m.icon('info', 15) }}
+          <p>There were no expenses in {{ data.previous_label }}, so there is no percentage baseline yet.</p>
+        </div>
+      {% endif %}
+    {% else %}
+      {{ m.empty_state('Not enough history', 'Comparisons appear once there are transactions in either the selected month or the month before.', 'chart') }}
+    {% endif %}
+
+    {% if data.categories %}
+      <div class="compare-foot">
+        <span>Top category</span>
+        <span class="compare-foot__value">{{ m.category_chip(data.categories[0].category) }} {{ data.categories[0].percent|pct }}</span>
+      </div>
+    {% endif %}
+    {% if data.busiest %}
+      <div class="compare-foot">
+        <span>Busiest day</span>
+        <span class="compare-foot__value">{{ data.busiest.transaction_date|short_date }} · {{ data.busiest.total|inr }}</span>
+      </div>
+    {% endif %}
+  </article>
+</section>
+{% endblock %}

@@ -1,0 +1,96 @@
+{% extends "base.html" %}
+{% import "_macros.html" as m %}
+
+{% block title %}Transactions{% endblock %}
+
+{% block content %}
+<div class="page-head">
+  <div>
+    <p class="eyebrow">Expense management</p>
+    <h1>Transactions</h1>
+    <p class="page-sub">Search, filter and manage every recorded expense.</p>
+  </div>
+  <div class="page-actions">
+    <a class="btn btn-primary" href="{{ url_for('main.add_expense') }}">{{ m.icon('plus', 17) }} Add expense</a>
+  </div>
+</div>
+
+<section class="card filter-card">
+  <form class="filters" method="get" action="{{ url_for('main.transactions') }}" role="search">
+    <div class="filter-field filter-field--search">
+      <label for="filter-q">Search</label>
+      <div class="input-with-icon">
+        {{ m.icon('search', 16) }}
+        <input id="filter-q" type="search" name="q" value="{{ filters.q }}" placeholder="Search descriptions…" autocomplete="off">
+      </div>
+    </div>
+
+    <div class="filter-field">
+      <label for="filter-category">Category</label>
+      <select id="filter-category" name="category">
+        <option value="">All categories</option>
+        {% for name in CATEGORY_NAMES %}
+          <option value="{{ name }}" {% if filters.category == name %}selected{% endif %}>{{ name }}</option>
+        {% endfor %}
+      </select>
+    </div>
+
+    <div class="filter-field">
+      <label for="filter-from">From</label>
+      <input id="filter-from" type="date" name="date_from" value="{{ filters.date_from }}" max="{{ today_iso }}">
+    </div>
+
+    <div class="filter-field">
+      <label for="filter-to">To</label>
+      <input id="filter-to" type="date" name="date_to" value="{{ filters.date_to }}" max="{{ today_iso }}">
+    </div>
+
+    <div class="filter-field filter-field--sort">
+      <label for="filter-sort">Sort</label>
+      <select id="filter-sort" name="sort">
+        <option value="newest" {% if filters.sort == 'newest' %}selected{% endif %}>Newest first</option>
+        <option value="oldest" {% if filters.sort == 'oldest' %}selected{% endif %}>Oldest first</option>
+      </select>
+    </div>
+
+    <div class="filter-actions">
+      <button class="btn btn-primary" type="submit">{{ m.icon('sliders', 15) }} Apply</button>
+      {% if filters_active %}
+        <a class="btn btn-ghost" href="{{ url_for('main.transactions') }}">Clear</a>
+      {% endif %}
+    </div>
+  </form>
+  {% if errors.date_range or errors.date_from or errors.date_to %}
+    <div class="filter-error">{{ m.icon('alert', 15) }} {{ errors.date_range or errors.date_from or errors.date_to }}</div>
+  {% endif %}
+</section>
+
+<div class="list-summary">
+  <p>
+    Showing <strong>{{ expenses|length }}</strong>
+    {% if filters_active %}matching{% endif %}
+    {{ 'transaction' if expenses|length == 1 else 'transactions' }}{% if filters_active %} of {{ total_expenses }} total{% endif %}
+  </p>
+  <p class="list-summary__total">Filtered total <strong>{{ filtered_total|inr }}</strong></p>
+</div>
+
+<section class="card card--flush">
+  {% if expenses %}
+    <div class="txn-table txn-table--actions">
+      <div class="txn-head">
+        <span>Transaction</span><span>Category</span><span>Date</span><span class="align-right">Amount</span><span class="align-right">Actions</span>
+      </div>
+      {% for expense in expenses %}
+        {{ m.expense_row(expense, show_actions=true) }}
+      {% endfor %}
+    </div>
+  {% elif filters_active %}
+    {{ m.empty_state('No matching transactions', 'Try a different search term, category or date range, or clear the filters to see everything.', 'search') }}
+    <div class="empty-actions">
+      <a class="btn btn-secondary btn-sm" href="{{ url_for('main.transactions') }}">Clear all filters</a>
+    </div>
+  {% else %}
+    {{ m.empty_state('No transactions yet', 'Your expense history will appear here once you record your first expense.', 'receipt', url_for('main.add_expense'), 'Add your first expense') }}
+  {% endif %}
+</section>
+{% endblock %}
